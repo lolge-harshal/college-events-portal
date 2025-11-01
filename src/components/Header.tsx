@@ -21,6 +21,11 @@ export default function Header() {
                                 Home
                             </Link>
                         </li>
+                        <li>
+                            <Link to="/events" className="hover:text-blue-200 transition">
+                                Events
+                            </Link>
+                        </li>
 
                         {/* Authenticated User Links */}
                         {!loading && user ? (

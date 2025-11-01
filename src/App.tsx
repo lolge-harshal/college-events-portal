@@ -8,6 +8,8 @@ import NotFound from './pages/NotFound'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 import Profile from './pages/Profile'
+import Events from './pages/Events'
+import EventDetail from './pages/EventDetail'
 
 function App() {
     return (
@@ -19,6 +21,8 @@ function App() {
                         <Routes>
                             {/* Public Routes */}
                             <Route path="/" element={<Home />} />
+                            <Route path="/events" element={<Events />} />
+                            <Route path="/events/:eventId" element={<EventDetail />} />
 
                             {/* Auth Routes */}
                             <Route path="/auth/login" element={<Login />} />
