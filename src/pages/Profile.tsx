@@ -303,40 +303,35 @@ export default function Profile() {
                     </div>
                 </div>
 
-                {/* Admin Controls */}
+                {/* Admin Dashboard Quick Access */}
                 {profile.is_admin && (
-                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-8 mb-8">
-                        <h3 className="text-xl font-bold text-red-900 mb-4 flex items-center">
-                            <span className="bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2 text-sm">
-                                ⚙️
+                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-8 mb-8">
+                        <h3 className="text-xl font-bold text-purple-900 mb-4 flex items-center">
+                            <span className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2 text-sm">
+                                👑
                             </span>
-                            Admin Controls
+                            Admin Panel
                         </h3>
 
-                        <p className="text-red-800 mb-4">
-                            As an administrator, you have special privileges and responsibilities. Use these tools carefully.
+                        <p className="text-purple-800 mb-6">
+                            You have administrative access to manage events, registrations, and organize college activities.
                         </p>
 
-                        <div className="space-y-3">
-                            <button className="w-full px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition text-left flex items-center">
-                                <span className="mr-3">👥</span>
-                                Manage Users
-                            </button>
+                        <button
+                            onClick={() => navigate('/admin/events/new')}
+                            className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition text-left flex items-center group">
+                            <span className="mr-3 text-lg group-hover:scale-110 transition-transform">➕</span>
+                            <div>
+                                <div className="font-semibold">Create Event</div>
+                                <div className="text-xs text-blue-100">Add new event</div>
+                            </div>
+                        </button>
 
-                            <button className="w-full px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition text-left flex items-center">
-                                <span className="mr-3">📊</span>
-                                View Analytics
-                            </button>
-
-                            <button className="w-full px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition text-left flex items-center">
-                                <span className="mr-3">⚙️</span>
-                                System Settings
-                            </button>
+                        <div className="mt-4 p-4 bg-purple-100 rounded-lg border border-purple-200">
+                            <p className="text-sm text-purple-800">
+                                <strong>💡 Tip:</strong> Use the admin dashboard to create, edit, and manage all college events. View registration details and export attendee information.
+                            </p>
                         </div>
-
-                        <p className="text-xs text-red-700 mt-4 italic">
-                            Admin controls are coming soon. These features will allow you to manage users, view system analytics, and configure platform settings.
-                        </p>
                     </div>
                 )}
 

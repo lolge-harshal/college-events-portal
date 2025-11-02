@@ -3,6 +3,7 @@ import { AuthProvider } from './hooks/useAuth'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminProtectedRoute from './components/AdminProtectedRoute'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import Login from './pages/auth/Login'
@@ -10,6 +11,11 @@ import Signup from './pages/auth/Signup'
 import Profile from './pages/Profile'
 import Events from './pages/Events'
 import EventDetail from './pages/EventDetail'
+
+// Admin Pages
+import AdminDashboard from './pages/admin/Dashboard'
+import EventForm from './pages/admin/EventForm'
+import AdminRegistrations from './pages/admin/Registrations'
 
 function App() {
     return (
@@ -35,6 +41,40 @@ function App() {
                                     <ProtectedRoute>
                                         <Profile />
                                     </ProtectedRoute>
+                                }
+                            />
+
+                            {/* Admin Routes */}
+                            <Route
+                                path="/admin/dashboard"
+                                element={
+                                    <AdminProtectedRoute>
+                                        <AdminDashboard />
+                                    </AdminProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/events/new"
+                                element={
+                                    <AdminProtectedRoute>
+                                        <EventForm />
+                                    </AdminProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/events/:eventId/edit"
+                                element={
+                                    <AdminProtectedRoute>
+                                        <EventForm />
+                                    </AdminProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/events/:eventId/registrations"
+                                element={
+                                    <AdminProtectedRoute>
+                                        <AdminRegistrations />
+                                    </AdminProtectedRoute>
                                 }
                             />
 

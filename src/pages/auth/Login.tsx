@@ -8,7 +8,6 @@ import { useAuth } from '../../hooks/useAuth'
  * Features:
  * - Email + Password authentication
  * - Link to Signup page
- * - Optional Magic Link toggle (uncomment to enable)
  * - Loading states and error handling
  * - Redirect authenticated users to /profile
  */
@@ -21,7 +20,6 @@ export default function Login() {
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
-    const [showMagicLink, setShowMagicLink] = useState(false)
 
     // Redirect authenticated users to profile
     useEffect(() => {
@@ -52,32 +50,6 @@ export default function Login() {
             setEmail('')
             setPassword('')
         }
-
-        setIsLoading(false)
-    }
-
-    /**
-     * Handle Magic Link login (optional feature)
-     * Uncomment to enable in production
-     */
-    async function handleMagicLink(e: React.FormEvent) {
-        e.preventDefault()
-        setError('')
-
-        if (!email.trim()) {
-            setError('Please enter your email')
-            return
-        }
-
-        setIsLoading(true)
-
-        // Example magic link implementation (requires Supabase setup)
-        // const { error } = await supabase.auth.signInWithOtp({ email })
-        // if (error) setError(error.message)
-        // else setError('') // Show success message instead
-
-        // For now, show placeholder
-        setError('Magic link feature not yet configured')
 
         setIsLoading(false)
     }
@@ -128,123 +100,56 @@ export default function Login() {
                         </div>
                     )}
 
-                    {/* Tab Switcher */}
-                    <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
-                        <button
-                            type="button"
-                            onClick={() => setShowMagicLink(false)}
-                            className={`flex-1 py-2 px-3 rounded font-medium transition ${!showMagicLink
-                                    ? 'bg-white text-blue-600 shadow'
-                                    : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                        >
-                            Email & Password
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setShowMagicLink(true)}
-                            className={`flex-1 py-2 px-3 rounded font-medium transition ${showMagicLink
-                                    ? 'bg-white text-blue-600 shadow'
-                                    : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                        >
-                            Magic Link
-                        </button>
-                    </div>
-
                     {/* Email + Password Form */}
-                    {!showMagicLink && (
-                        <form onSubmit={handleEmailLogin} className="space-y-4">
-                            {/* Email Input */}
-                            <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Email Address
-                                </label>
-                                <input
-                                    id="email"
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="you@example.com"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                    disabled={isLoading}
-                                />
-                            </div>
-
-                            {/* Password Input */}
-                            <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Password
-                                </label>
-                                <input
-                                    id="password"
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                    disabled={isLoading}
-                                />
-                            </div>
-
-                            {/* Submit Button */}
-                            <button
-                                type="submit"
+                    <form onSubmit={handleEmailLogin} className="space-y-4">
+                        {/* Email Input */}
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                                Email Address
+                            </label>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="you@example.com"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                                 disabled={isLoading}
-                                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-400 transition"
-                            >
-                                {isLoading ? (
-                                    <span className="flex items-center justify-center">
-                                        <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                                        Signing in...
-                                    </span>
-                                ) : (
-                                    'Sign In'
-                                )}
-                            </button>
-                        </form>
-                    )}
+                            />
+                        </div>
 
-                    {/* Magic Link Form */}
-                    {showMagicLink && (
-                        <form onSubmit={handleMagicLink} className="space-y-4">
-                            {/* Email Input */}
-                            <div>
-                                <label htmlFor="magic-email" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Email Address
-                                </label>
-                                <input
-                                    id="magic-email"
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="you@example.com"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                    disabled={isLoading}
-                                />
-                            </div>
-
-                            {/* Submit Button */}
-                            <button
-                                type="submit"
+                        {/* Password Input */}
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                                Password
+                            </label>
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                                 disabled={isLoading}
-                                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-400 transition"
-                            >
-                                {isLoading ? (
-                                    <span className="flex items-center justify-center">
-                                        <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                                        Sending link...
-                                    </span>
-                                ) : (
-                                    'Send Magic Link'
-                                )}
-                            </button>
+                            />
+                        </div>
 
-                            <p className="text-xs text-gray-500 text-center mt-3">
-                                We'll send you a link to sign in without needing a password.
-                            </p>
-                        </form>
-                    )}
+                        {/* Submit Button */}
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-400 transition"
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center justify-center">
+                                    <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                                    Signing in...
+                                </span>
+                            ) : (
+                                'Sign In'
+                            )}
+                        </button>
+                    </form>
 
                     {/* Divider */}
                     <div className="mt-6 relative">

@@ -68,7 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const attempts = fetchAttempts.get(userId) || 0
             if (attempts >= MAX_FETCH_ATTEMPTS) {
                 console.warn(`⚠️ Profile fetch already attempted ${attempts} times for user ${userId}. Giving up.`)
-                setProfile(null)
+                // Don't clear profile on max retries - keep existing profile for resilience
+                console.log('💡 Keeping existing profile to maintain session')
+                setIsFetching(false)
                 return
             }
 
@@ -106,8 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     console.error('   Fix: Go to Supabase dashboard and disable RLS or fix policies')
                     console.error('   See: DISABLE_RLS_NOW.sql for quick fix')
 
-                    // Set profile to null but don't throw - allow app to continue
-                    setProfile(null)
+                    // Don't clear profile - keep session active if profile already exists
+                    if (!profile) {
+                        setProfile(null)
+                    }
                     setIsFetching(false)
                     return
                 }
@@ -121,8 +125,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     console.error('   3. User ID in auth doesn\'t match profiles table')
                     console.error('   ➜ Check Supabase dashboard: Authentication > Policies')
 
-                    // Set profile to null but don't throw - allow app to continue
-                    setProfile(null)
+                    // Don't clear profile on RLS errors if it already exists
+                    if (!profile) {
+                        setProfile(null)
+                    }
                     setIsFetching(false)
                     // IMPORTANT: Still return without throwing, so loading state can be set to false
                     return
@@ -140,41 +146,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         return await fetchProfile(userId)
                     } else {
                         console.error('💡 DIAGNOSTIC: Max retry attempts reached for timeout. Supabase may be experiencing issues.')
-                        setProfile(null)
+                        // Keep existing profile on timeout - don't clear it
+                        if (!profile) {
+                            setProfile(null)
+                        }
                         setIsFetching(false)
                         return
                     }
                 }
 
-                // For any other error, set profile to null and continue (don't crash the app)
-                console.warn('⚠️ Profile fetch failed, but app will continue to work with limited functionality')
-                setProfile(null)
+                // For any other error, keep existing profile if available (graceful degradation)
+                console.warn('⚠️ Profile fetch failed, keeping existing profile to maintain session')
+                // Only set to null if we don't already have a profile
+                if (!profile) {
+                    setProfile(null)
+                }
                 setIsFetching(false)
                 return
             }
 
             if (!data) {
                 console.warn('⚠️ No profile found for user:', userId)
-                setProfile(null)
+                // Don't clear if profile already exists - only set to null on first fetch
+                if (!profile) {
+                    setProfile(null)
+                }
                 setIsFetching(false)
                 return
             }
 
-            // Convert role to is_admin boolean for convenience
+            // Use is_admin from database, fallback to role comparison for backward compatibility
             const profileData: Profile = {
                 ...data,
-                is_admin: data.role === 'admin',
+                is_admin: data.is_admin !== undefined ? data.is_admin : (data.role === 'admin'),
             }
-            console.log('✅ Profile loaded successfully:', profileData.email)
+            console.log('✅ Profile loaded successfully:', profileData.email, `(Admin: ${profileData.is_admin})`)
             setProfile(profileData)
             setIsFetching(false)
         } catch (err) {
             console.error('❌ Error fetching profile:', err)
             console.error('📋 Full error details:', err instanceof Error ? err.message : JSON.stringify(err))
-            setProfile(null)
+            // Only clear profile on exception if we don't have one yet
+            if (!profile) {
+                setProfile(null)
+            }
             setIsFetching(false)
-            // Note: We set profile to null but don't re-throw, allowing the app to continue
-            // This prevents infinite loading states when profile fetch fails
+            // Note: We keep profile if it exists to prevent session loss
+            // This allows the app to continue with stale but valid profile data
         }
     }
 
@@ -215,12 +233,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return { error: err }
             }
 
-            // Step 2: Create profile record (role defaults to 'student')
+            // Step 2: Create profile record
+            // Check if this is the demo admin email and set role accordingly
+            const isAdminSignup = trimmedEmail === 'admin@demo.college-events.edu'
+            const userRole = isAdminSignup ? 'admin' : 'student'
+
             const { error: profileError } = await supabase.from('profiles').insert({
                 id: authData.user.id,
                 email: trimmedEmail,
                 full_name: trimmedFullName,
-                role: 'student', // Default role for new sign-ups
+                role: userRole,
+                is_admin: isAdminSignup, // Set is_admin flag
             })
 
             if (profileError) {
@@ -277,24 +300,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     /**
      * Sign out the current user
+     * IMPORTANT: Uses scope: 'global' to clear stored session data
+     * Then clears all local state
      */
     async function signOut() {
         try {
             setError(null)
-            const { error } = await supabase.auth.signOut()
+            console.log('🚪 Attempting to sign out (clearing stored session)...')
+
+            // Use scope: 'global' to clear the stored session from Supabase
+            // This ensures the session doesn't persist after refresh
+            const { error } = await supabase.auth.signOut({ scope: 'global' })
 
             if (error) {
-                setError(error.message)
-                return { error }
+                console.warn('⚠️ Warning during sign out:', error.message)
             }
 
+            // ALWAYS clear local state, regardless of remote logout result
+            // This prevents users from getting stuck with invalid sessions
             setUser(null)
             setProfile(null)
+            setFetchAttempts(new Map())
+            setLastAuthEvent(null)
+
+            console.log('✅ Successfully signed out (session cleared and local state reset)')
             return { error: null }
         } catch (err) {
+            // Even on exception, clear all state
             const errorMessage = err instanceof Error ? err.message : 'Sign out failed'
-            setError(errorMessage)
-            return { error: err instanceof Error ? err : new Error(errorMessage) }
+            console.warn('⚠️ Sign out exception:', errorMessage)
+
+            // Clear local state to prevent session limbo
+            setUser(null)
+            setProfile(null)
+            setFetchAttempts(new Map())
+            setLastAuthEvent(null)
+
+            // Return no error since we successfully cleared local state
+            // The user is effectively logged out even if remote logout failed
+            return { error: null }
         }
     }
 
@@ -357,8 +401,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             // Skip INITIAL_SESSION if profile is already loaded and hasn't changed
             if (_event === 'INITIAL_SESSION' && profile && session?.user?.id === user?.id) {
-                console.log('⏳ INITIAL_SESSION detected but profile already loaded, skipping refetch')
+                console.log('⏳ INITIAL_SESSION detected but profile already loaded, keeping session active')
                 setLoading(false)
+                // IMPORTANT: Keep user set even if we skip profile refetch
+                if (session?.user) {
+                    setUser(session.user)
+                }
                 return
             }
 
@@ -391,6 +439,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     }
                 }
             } else {
+                // Only clear profile if session actually ends (user signed out)
+                // Don't clear just because of temporary connection issues
                 setUser(null)
                 setProfile(null)
                 setFetchAttempts(new Map())

@@ -46,8 +46,16 @@ export default function Header() {
                         </li>
 
                         {/* Authenticated User Links */}
-                        {!loading && user ? (
+                        {user ? (
                             <>
+                                {/* Admin Link */}
+                                {profile?.is_admin && (
+                                    <li>
+                                        <Link to="/admin/dashboard" className="hover:text-blue-200 transition font-medium">
+                                            ⚙️ Admin
+                                        </Link>
+                                    </li>
+                                )}
                                 <li className="border-l border-blue-400 pl-6 flex items-center justify-end gap-4 whitespace-nowrap">
                                     {/* User Info */}
                                     <div className="flex items-center gap-3">
@@ -70,8 +78,8 @@ export default function Header() {
                                         onClick={handleSignOut}
                                         disabled={isSigningOut}
                                         className={`px-3 py-2 rounded-lg font-medium text-sm transition flex-shrink-0 ${isSigningOut
-                                                ? 'opacity-50 cursor-not-allowed bg-blue-700'
-                                                : 'hover:bg-blue-700'
+                                            ? 'opacity-50 cursor-not-allowed bg-blue-700'
+                                            : 'hover:bg-blue-700'
                                             }`}
                                     >
                                         {isSigningOut ? 'Signing Out...' : 'Sign Out'}
