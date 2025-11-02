@@ -46,11 +46,20 @@ export default function Signup() {
     }
 
     /**
+     * Validate email format
+     */
+    function isValidEmail(emailInput: string): boolean {
+        // RFC 5322 compliant email regex (simplified)
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        return emailRegex.test(emailInput.trim())
+    }
+
+    /**
      * Validate form inputs
      */
     function validateForm(): string | null {
         if (!email.trim()) return 'Email is required'
-        if (!email.includes('@')) return 'Please enter a valid email'
+        if (!isValidEmail(email)) return 'Please enter a valid email address'
         if (!fullName.trim()) return 'Full name is required'
         if (fullName.trim().length < 2) return 'Full name must be at least 2 characters'
         if (!password) return 'Password is required'
@@ -75,10 +84,24 @@ export default function Signup() {
         }
 
         setIsLoading(true)
-        const { error } = await signUp(email, password, fullName)
+        const { error } = await signUp(email.trim(), password, fullName.trim())
 
         if (error) {
-            setError(error.message || 'Failed to create account')
+            // Handle specific Supabase error messages
+            let errorMessage = error.message || 'Failed to create account'
+
+            // Improve error messages
+            if (errorMessage.includes('Email') || errorMessage.includes('email')) {
+                if (errorMessage.includes('invalid')) {
+                    errorMessage = 'The email address format is invalid. Please check and try again.'
+                } else if (errorMessage.includes('already')) {
+                    errorMessage = 'This email address is already registered. Please sign in or use a different email.'
+                } else if (errorMessage.includes('not allowed')) {
+                    errorMessage = 'This email address is not allowed. Please use a different email.'
+                }
+            }
+
+            setError(errorMessage)
             setIsLoading(false)
         } else {
             // Show success message

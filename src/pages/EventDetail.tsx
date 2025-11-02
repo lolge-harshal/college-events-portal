@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { withTimeout } from '../lib/queryTimeout'
 import RegisterButton from '../components/RegisterButton'
 
 interface Event {
@@ -57,12 +58,17 @@ export default function EventDetail() {
         }
 
         try {
+            console.log('🔄 Fetching event details for:', eventId)
+
             // Fetch event
-            const { data: eventData, error: eventError } = await supabase
-                .from('events')
-                .select('*')
-                .eq('id', eventId)
-                .single()
+            const { data: eventData, error: eventError } = await withTimeout<Event>(
+                supabase
+                    .from('events')
+                    .select('*')
+                    .eq('id', eventId)
+                    .single(),
+                10000
+            )
 
             if (eventError) throw eventError
 
@@ -72,31 +78,48 @@ export default function EventDetail() {
                 return
             }
 
+            console.log('✅ Event details fetched')
             setEvent(eventData)
 
             // Fetch organizer details
-            const { data: organizerData, error: organizerError } = await supabase
-                .from('profiles')
-                .select('id, full_name, email, role')
-                .eq('id', eventData.organizer_id)
-                .single()
+            try {
+                const { data: organizerData, error: organizerError } = await withTimeout<Organizer>(
+                    supabase
+                        .from('profiles')
+                        .select('id, full_name, email, role')
+                        .eq('id', eventData.organizer_id)
+                        .single(),
+                    10000
+                )
 
-            if (organizerError) {
-                console.error('Error fetching organizer:', organizerError)
-            } else {
-                setOrganizer(organizerData)
+                if (organizerError) {
+                    console.error('Error fetching organizer:', organizerError)
+                } else {
+                    console.log('✅ Organizer details fetched')
+                    setOrganizer(organizerData)
+                }
+            } catch (err) {
+                console.error('Error fetching organizer:', err)
             }
 
             // Fetch registration count
-            const { count, error: countError } = await supabase
-                .from('registrations')
-                .select('*', { count: 'exact', head: true })
-                .eq('event_id', eventId)
+            try {
+                const { count, error: countError } = await withTimeout<any[]>(
+                    supabase
+                        .from('registrations')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('event_id', eventId),
+                    10000
+                )
 
-            if (countError) {
-                console.error('Error fetching registration count:', countError)
-            } else {
-                setCurrentRegistrations(count || 0)
+                if (countError) {
+                    console.error('Error fetching registration count:', countError)
+                } else {
+                    console.log('✅ Registration count fetched')
+                    setCurrentRegistrations(count || 0)
+                }
+            } catch (err) {
+                console.error('Error fetching registration count:', err)
             }
 
             // Fetch image if path exists
@@ -107,6 +130,7 @@ export default function EventDetail() {
                         .createSignedUrl(eventData.image_path, 3600) // URL valid for 1 hour
 
                     if (signedUrlData?.signedUrl) {
+                        console.log('✅ Event image URL fetched')
                         setImageUrl(signedUrlData.signedUrl)
                     }
                 } catch (imgError) {
@@ -115,6 +139,7 @@ export default function EventDetail() {
             }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to load event'
+            console.error('❌ Event detail error:', errorMessage)
             setError(errorMessage)
         } finally {
             setIsLoading(false)
@@ -352,34 +377,34 @@ export default function EventDetail() {
 
                     {/* Sidebar - Registration */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-lg shadow-lg p-8 sticky top-8">
+                        <div className="bg-white rounded-lg shadow-lg p-6 md:p-8 sticky top-4 md:top-8">
                             {/* Capacity Section */}
-                            <div className="mb-8">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Event Capacity</h3>
+                            <div className="mb-6 md:mb-8">
+                                <h3 className="text-base md:text-lg font-bold text-gray-900 mb-4">Event Capacity</h3>
 
                                 {/* Big Numbers */}
-                                <div className="grid grid-cols-2 gap-4 mb-6">
-                                    <div className="text-center">
-                                        <div className="text-4xl font-bold text-blue-600">
+                                <div className="grid grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
+                                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                                        <div className="text-2xl md:text-4xl font-bold text-blue-600">
                                             {currentRegistrations}
                                         </div>
-                                        <p className="text-gray-600 text-sm mt-1">Registered</p>
+                                        <p className="text-gray-600 text-xs md:text-sm mt-1">Registered</p>
                                     </div>
-                                    <div className="text-center">
-                                        <div className="text-4xl font-bold text-green-600">
+                                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                                        <div className="text-2xl md:text-4xl font-bold text-green-600">
                                             {remainingSeats}
                                         </div>
-                                        <p className="text-gray-600 text-sm mt-1">Available</p>
+                                        <p className="text-gray-600 text-xs md:text-sm mt-1">Available</p>
                                     </div>
                                 </div>
 
                                 {/* Capacity Info */}
-                                <p className="text-center text-gray-700 font-semibold mb-4">
+                                <p className="text-center text-gray-700 font-semibold mb-4 text-sm md:text-base">
                                     {currentRegistrations} of {event.capacity} seats taken
                                 </p>
 
                                 {/* Capacity Bar */}
-                                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div className="w-full bg-gray-200 rounded-full h-2 md:h-3">
                                     <div
                                         className={`h-full rounded-full transition-all ${currentRegistrations / event.capacity >= 0.8
                                             ? 'bg-red-500'
@@ -398,22 +423,22 @@ export default function EventDetail() {
 
                                 {/* Capacity Message */}
                                 {currentRegistrations >= event.capacity ? (
-                                    <p className="text-red-600 font-semibold text-sm mt-3 text-center">
+                                    <p className="text-red-600 font-semibold text-xs md:text-sm mt-3 text-center">
                                         ⚠️ Event is at full capacity
                                     </p>
                                 ) : remainingSeats <= 5 ? (
-                                    <p className="text-orange-600 font-semibold text-sm mt-3 text-center">
+                                    <p className="text-orange-600 font-semibold text-xs md:text-sm mt-3 text-center">
                                         🔥 Only {remainingSeats} seat{remainingSeats !== 1 ? 's' : ''} left!
                                     </p>
                                 ) : null}
                             </div>
 
                             {/* Divider */}
-                            <div className="border-t border-gray-200 my-8"></div>
+                            <div className="border-t border-gray-200 my-6 md:my-8"></div>
 
                             {/* Registration Button */}
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Register Now</h3>
+                                <h3 className="text-base md:text-lg font-bold text-gray-900 mb-4">Register Now</h3>
                                 <RegisterButton
                                     eventId={event.id}
                                     currentRegistrations={currentRegistrations}

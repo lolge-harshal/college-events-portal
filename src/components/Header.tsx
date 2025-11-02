@@ -1,11 +1,29 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Header() {
     const { user, profile, loading, signOut } = useAuth()
+    const [isSigningOut, setIsSigningOut] = useState(false)
+    const [signOutError, setSignOutError] = useState('')
 
     async function handleSignOut() {
-        await signOut()
+        setSignOutError('')
+        setIsSigningOut(true)
+        try {
+            const { error } = await signOut()
+            if (error) {
+                console.error('❌ Sign out error:', error)
+                setSignOutError('Failed to sign out. Please try again.')
+            } else {
+                console.log('✅ Successfully signed out')
+            }
+        } catch (err) {
+            console.error('❌ Unexpected sign out error:', err)
+            setSignOutError('An unexpected error occurred during sign out.')
+        } finally {
+            setIsSigningOut(false)
+        }
     }
 
     return (
@@ -30,25 +48,33 @@ export default function Header() {
                         {/* Authenticated User Links */}
                         {!loading && user ? (
                             <>
-                                <li className="border-l border-blue-400 pl-6 flex items-center space-x-3">
-                                    <div className="text-right">
-                                        <p className="text-sm font-medium">{profile?.full_name || 'User'}</p>
-                                        {profile?.role && (
-                                            <p className="text-xs text-blue-100 capitalize">{profile.role}</p>
-                                        )}
+                                <li className="border-l border-blue-400 pl-6 flex items-center justify-end gap-4 whitespace-nowrap">
+                                    {/* User Info */}
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-right min-w-fit">
+                                            <p className="text-sm font-semibold">{profile?.full_name || 'User'}</p>
+                                            {profile?.role && (
+                                                <p className="text-xs text-blue-100 capitalize">{profile.role}</p>
+                                            )}
+                                        </div>
+                                        <Link
+                                            to="/profile"
+                                            className="bg-blue-500 hover:bg-blue-400 rounded-full p-2 transition flex-shrink-0 text-lg"
+                                            title="View Profile"
+                                        >
+                                            👤
+                                        </Link>
                                     </div>
-                                    <Link
-                                        to="/profile"
-                                        className="bg-blue-500 hover:bg-blue-400 rounded-full p-2 transition"
-                                        title="Profile"
-                                    >
-                                        👤
-                                    </Link>
+                                    {/* Sign Out Button */}
                                     <button
                                         onClick={handleSignOut}
-                                        className="hover:text-blue-200 transition font-medium text-sm"
+                                        disabled={isSigningOut}
+                                        className={`px-3 py-2 rounded-lg font-medium text-sm transition flex-shrink-0 ${isSigningOut
+                                                ? 'opacity-50 cursor-not-allowed bg-blue-700'
+                                                : 'hover:bg-blue-700'
+                                            }`}
                                     >
-                                        Sign Out
+                                        {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                                     </button>
                                 </li>
                             </>
@@ -75,6 +101,19 @@ export default function Header() {
                         )}
                     </ul>
                 </div>
+
+                {/* Error message */}
+                {signOutError && (
+                    <div className="mt-2 p-2 bg-red-500 bg-opacity-90 rounded text-sm flex items-start justify-between">
+                        <span>{signOutError}</span>
+                        <button
+                            onClick={() => setSignOutError('')}
+                            className="ml-2 font-bold hover:text-red-100"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )}
             </nav>
         </header>
     )

@@ -26,7 +26,7 @@ export default function RegisterButton({
     onRegistrationSuccess,
 }: RegisterButtonProps) {
     const navigate = useNavigate()
-    const { user, profile, loading: authLoading } = useAuth()
+    const { user, loading: authLoading } = useAuth()
 
     // Local state
     const [isLoading, setIsLoading] = useState(false)
@@ -37,7 +37,43 @@ export default function RegisterButton({
     // Derive state
     const isEventFull = currentRegistrations >= capacity
     const remainingSeats = capacity - currentRegistrations
-    const isLoggedIn = !!user && !!profile && !authLoading
+    // User is logged in if they have a Supabase user, even if profile fetch failed
+    // This allows registration even if there are RLS issues
+    const isLoggedIn = !!user && !authLoading
+
+    /**
+     * Check if user's profile exists in the database
+     * This is crucial because registrations have a foreign key constraint on profiles
+     */
+    async function checkProfileExists(): Promise<boolean> {
+        if (!user) return false
+
+        try {
+            console.log('🔍 Checking if profile exists for user:', user.id)
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', user.id)
+                .maybeSingle() // Use maybeSingle to handle case where no profile exists
+
+            if (error) {
+                // 406 errors are OK - it just means RLS is blocking the check
+                if (error.message?.includes('406') || error.message?.includes('Not Acceptable')) {
+                    console.warn('⚠️ Cannot verify profile due to RLS policies. Proceeding with registration anyway.')
+                    return true // Assume profile exists if we can't check due to RLS
+                }
+                throw error
+            }
+
+            const exists = !!data
+            console.log(exists ? '✅ Profile exists' : '❌ Profile does not exist')
+            return exists
+        } catch (err) {
+            console.error('Error checking profile existence:', err)
+            // On error, try to proceed anyway - let the database foreign key fail
+            return true
+        }
+    }
 
     /**
      * Check if user is already registered for this event
@@ -95,6 +131,14 @@ export default function RegisterButton({
                 return
             }
 
+            // Check if profile exists (prevents foreign key constraint errors)
+            const profileExists = await checkProfileExists()
+            if (!profileExists) {
+                setError('Your profile does not exist. Please contact support or try logging out and back in.')
+                setIsLoading(false)
+                return
+            }
+
             // Insert registration
             const { error: insertError } = await supabase.from('registrations').insert({
                 event_id: eventId,
@@ -104,7 +148,14 @@ export default function RegisterButton({
             })
 
             if (insertError) {
-                setError(insertError.message)
+                console.error('❌ Registration insert failed:', insertError)
+
+                // Check if it's a foreign key constraint error
+                if (insertError.message.includes('foreign key') || insertError.code === 'PGRST116') {
+                    setError('Failed to register: Your profile data is missing. Please try logging out and back in.')
+                } else {
+                    setError(insertError.message || 'Registration failed')
+                }
                 setIsLoading(false)
                 return
             }

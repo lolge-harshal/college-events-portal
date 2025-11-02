@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { withTimeout } from '../lib/queryTimeout'
 
 interface Event {
     id: string
@@ -45,43 +46,72 @@ export default function Events() {
         setError('')
 
         try {
-            let query = supabase
-                .from('events')
-                .select('*')
-                .order('start_time', { ascending: true })
+            console.log('🔄 Fetching events...')
 
-            const { data, error: fetchError } = await query
+            // Add timeout to prevent hanging
+            const { data, error: fetchError, status } = await withTimeout<Event[]>(
+                supabase
+                    .from('events')
+                    .select('*')
+                    .order('start_time', { ascending: true }),
+                10000
+            )
 
-            if (fetchError) throw fetchError
+            if (fetchError) {
+                console.error('❌ Events fetch error:', {
+                    message: fetchError.message,
+                    code: fetchError.code,
+                    status: status,
+                })
+
+                if (status === 406) {
+                    console.error('💡 TIP: 406 error - RLS might still be enabled.')
+                }
+
+                throw fetchError
+            }
 
             if (!data) {
+                console.log('⚠️ No events data returned')
                 setEvents([])
                 return
             }
 
+            console.log(`✅ Loaded ${data.length} events`)
+
             // Fetch registration counts for each event
             const eventsWithStats = await Promise.all(
-                data.map(async (event) => {
-                    const { count, error: countError } = await supabase
-                        .from('registrations')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('event_id', event.id)
+                data.map(async (event: Event) => {
+                    try {
+                        const { count, error: countError } = await withTimeout<any[]>(
+                            supabase
+                                .from('registrations')
+                                .select('*', { count: 'exact', head: true })
+                                .eq('event_id', event.id),
+                            5000
+                        )
 
-                    if (countError) {
-                        console.error('Error fetching registration count:', countError)
+                        if (countError) {
+                            console.error('❌ Error fetching registration count for event', event.id, countError)
+                            return { ...event, current_registrations: 0 }
+                        }
+
+                        return {
+                            ...event,
+                            current_registrations: count || 0,
+                        }
+                    } catch (countErr) {
+                        console.error('❌ Error fetching registration count for event', event.id, countErr)
                         return { ...event, current_registrations: 0 }
-                    }
-
-                    return {
-                        ...event,
-                        current_registrations: count || 0,
                     }
                 })
             )
 
+            console.log('✅ Events with registration counts loaded')
             setEvents(eventsWithStats)
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to fetch events'
+            console.error('❌ Events error:', errorMessage)
             setError(errorMessage)
             setEvents([])
         } finally {
@@ -308,8 +338,8 @@ export default function Events() {
                                             <div className="w-full bg-gray-200 rounded-full h-2 mt-2 overflow-hidden">
                                                 <div
                                                     className={`h-full rounded-full transition-all ${((event.current_registrations || 0) / event.capacity) >= 0.8
-                                                            ? 'bg-red-500'
-                                                            : 'bg-green-500'
+                                                        ? 'bg-red-500'
+                                                        : 'bg-green-500'
                                                         }`}
                                                     style={{
                                                         width: `${Math.min(

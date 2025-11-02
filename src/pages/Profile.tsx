@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
 
@@ -103,8 +103,79 @@ export default function Profile() {
     }
 
     // Redirect if not authenticated (safety check)
-    if (!user || !profile) {
+    if (!user) {
         return null
+    }
+
+    // If profile failed to load, show an error message but allow the user to see their email
+    if (!profile) {
+        return (
+            <div className="min-h-screen bg-gray-50 py-12 px-4">
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-bold text-gray-900">My Profile</h1>
+                        <p className="text-gray-600 mt-2">Manage your account settings</p>
+                    </div>
+
+                    {/* Error Alert */}
+                    <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-start" role="alert">
+                        <span className="text-orange-600 mr-3 mt-0.5">⚠️</span>
+                        <div>
+                            <p className="text-orange-800 font-medium">Profile Loading</p>
+                            <p className="text-orange-700 text-sm">
+                                We're having trouble loading your full profile details. However, your account is active.
+                                Try refreshing the page or contact support if the issue persists.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Basic Info Card */}
+                    <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Account Information</h2>
+
+                        {/* Email Field */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                            <div className="px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 font-medium">
+                                {user.email}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">Email cannot be changed. Contact support to update.</p>
+                        </div>
+
+                        {/* User ID */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                            <p className="text-sm text-blue-800">
+                                <strong>User ID:</strong> <code className="bg-blue-100 px-2 py-1 rounded text-xs">{user.id}</code>
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Quick Actions Section */}
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg p-8 border border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 mb-2">Ready to Explore More?</h3>
+                                <p className="text-sm text-gray-600">Browse events, register for activities, and connect with your college community.</p>
+                            </div>
+                            <div className="flex gap-3 ml-4">
+                                <Link
+                                    to="/events"
+                                    className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition whitespace-nowrap"
+                                >
+                                    View Events
+                                </Link>
+                                <button
+                                    onClick={handleSignOut}
+                                    className="px-6 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition whitespace-nowrap"
+                                >
+                                    Sign Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -155,10 +226,10 @@ export default function Profile() {
                         {/* Role Badge */}
                         <div
                             className={`px-4 py-2 rounded-full font-semibold text-white text-sm ${profile.role === 'admin'
-                                    ? 'bg-red-500'
-                                    : profile.role === 'organizer'
-                                        ? 'bg-purple-500'
-                                        : 'bg-blue-500'
+                                ? 'bg-red-500'
+                                : profile.role === 'organizer'
+                                    ? 'bg-purple-500'
+                                    : 'bg-blue-500'
                                 }`}
                         >
                             {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
@@ -269,24 +340,28 @@ export default function Profile() {
                     </div>
                 )}
 
-                {/* Sign Out Section */}
-                <div className="bg-white rounded-lg shadow-lg p-8">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Security</h3>
-
-                    <p className="text-gray-600 mb-4">
-                        Sign out from your account. You'll need to log in again to access your profile.
-                    </p>
-
-                    <button
-                        onClick={handleSignOut}
-                        className="w-full px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition"
-                    >
-                        Sign Out
-                    </button>
-
-                    <p className="text-xs text-gray-500 mt-4">
-                        You can also change your password through the sign-in page if needed.
-                    </p>
+                {/* Quick Actions Section */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg p-8 border border-blue-200">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">Ready to Explore?</h3>
+                            <p className="text-sm text-gray-600">Check out events happening around campus.</p>
+                        </div>
+                        <div className="flex gap-3 ml-4">
+                            <Link
+                                to="/events"
+                                className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition whitespace-nowrap"
+                            >
+                                View Events
+                            </Link>
+                            <button
+                                onClick={handleSignOut}
+                                className="px-6 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition whitespace-nowrap"
+                            >
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Last Updated Info */}
